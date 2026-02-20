@@ -11,7 +11,7 @@ import static com.mongodb.client.model.Filters.eq;
 
 public class QuickStart {
     public static void main(String[] args) {
-
+//
         String uri = "mongodb+srv://jlcastroc01_db_user:toor@cluster0.jr7c2xx.mongodb.net/?appName=Cluster0";
 
         try (MongoClient mongoClient = MongoClients.create(uri)) {
