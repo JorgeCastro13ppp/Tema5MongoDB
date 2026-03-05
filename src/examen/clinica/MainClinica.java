@@ -1,6 +1,6 @@
-
 package examen.clinica;
 
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 import org.bson.Document;
@@ -18,150 +18,335 @@ public class MainClinica {
 
         Scanner sc = new Scanner(System.in);
 
-        String uri = "TU_URI";
+        // URI de conexión a MongoDB Atlas
+        String uri = "mongodb+srv://jlcastroc01_db_user:toor@cluster0.jr7c2xx.mongodb.net/?appName=Cluster0";
 
         try (MongoClient mongoClient = MongoClients.create(uri)) {
 
+            // Seleccionamos la base de datos
             MongoDatabase db = mongoClient.getDatabase("clinica");
 
+            // Seleccionamos las colecciones
             MongoCollection<Document> pacientes = db.getCollection("paciente");
             MongoCollection<Document> citas = db.getCollection("cita");
 
-            int opcion;
+            int opcion = -1;
 
+            // Bucle principal del menú
             do {
 
-                System.out.println("\n1 Insertar paciente");
-                System.out.println("2 Insertar cita");
-                System.out.println("3 Mostrar paciente por DNI");
-                System.out.println("4 Listar pacientes");
-                System.out.println("5 Actualizar telefono");
-                System.out.println("6 Eliminar paciente");
-                System.out.println("0 Salir");
+                mostrarMenu();
 
-                opcion = sc.nextInt();
+                try {
+                    opcion = sc.nextInt();
+                    sc.nextLine();
+
+                    switch (opcion) {
+
+                        case 1:
+                            insertarPaciente(sc, pacientes);
+                            break;
+
+                        case 2:
+                            insertarCita(sc, citas);
+                            break;
+
+                        case 3:
+                            mostrarPaciente(sc, pacientes);
+                            break;
+
+                        case 4:
+                            listarPacientes(pacientes);
+                            break;
+
+                        case 5:
+                            actualizarTelefono(sc, pacientes);
+                            break;
+
+                        case 6:
+                            eliminarPaciente(sc, pacientes);
+                            break;
+
+                        case 0:
+                            System.out.println("Programa finalizado.");
+                            break;
+
+                        default:
+                            System.out.println("Opción no válida.");
+                    }
+
+                } catch (InputMismatchException e) {
+                    System.out.println("Error: tipo de dato incorrecto.");
+                    sc.nextLine(); // limpiar buffer
+                }
+
+            } while (opcion != 0);
+
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Método que muestra el menú principal
+    // ---------------------------------------------------------
+    public static void mostrarMenu() {
+
+        System.out.println("\n1 Insertar paciente");
+        System.out.println("2 Insertar cita");
+        System.out.println("3 Mostrar paciente por DNI");
+        System.out.println("4 Listar pacientes");
+        System.out.println("5 Actualizar telefono");
+        System.out.println("6 Eliminar paciente");
+        System.out.println("0 Salir");
+        System.out.print("Seleccione una opción: ");
+    }
+
+    // ---------------------------------------------------------
+    // CREATE -> Insertar paciente
+    // ---------------------------------------------------------
+    public static void insertarPaciente(Scanner sc, MongoCollection<Document> pacientes) {
+
+        try {
+
+            System.out.print("Nombre: ");
+            String nombre = sc.nextLine();
+
+            System.out.print("DNI: ");
+            String dni = sc.nextLine();
+
+            System.out.print("Telefono: ");
+            int telefono = sc.nextInt();
+            sc.nextLine();
+
+            // Crear documento MongoDB
+            Document paciente = new Document("nombre", nombre)
+                    .append("dni", dni)
+                    .append("telefono", telefono);
+
+            // Insertar documento
+            pacientes.insertOne(paciente);
+
+            System.out.println("Paciente insertado correctamente.");
+
+        } catch (InputMismatchException e) {
+            System.out.println("Error: el teléfono debe ser numérico.");
+            sc.nextLine();
+        }
+    }
+
+    // ---------------------------------------------------------
+    // CREATE -> Insertar cita
+    // ---------------------------------------------------------
+    public static void insertarCita(Scanner sc, MongoCollection<Document> citas) {
+
+        try {
+
+            System.out.print("ID cita: ");
+            int idCita = sc.nextInt();
+
+            System.out.print("ID paciente: ");
+            int idPaciente = sc.nextInt();
+
+            sc.nextLine();
+
+            System.out.print("Fecha: ");
+            String fecha = sc.nextLine();
+
+            System.out.print("Motivo: ");
+            String motivo = sc.nextLine();
+
+            Document cita = new Document("id_cita", idCita)
+                    .append("id_paciente", idPaciente)
+                    .append("fecha", fecha)
+                    .append("motivo", motivo);
+
+            citas.insertOne(cita);
+
+            System.out.println("Cita insertada correctamente.");
+
+        } catch (InputMismatchException e) {
+            System.out.println("Error: los IDs deben ser numéricos.");
+            sc.nextLine();
+        }
+    }
+
+    // ---------------------------------------------------------
+    // READ -> Mostrar paciente por DNI
+    // ---------------------------------------------------------
+    public static void mostrarPaciente(Scanner sc, MongoCollection<Document> pacientes) {
+
+        System.out.print("Introduce DNI: ");
+        String dniBuscar = sc.nextLine();
+
+        Document doc = pacientes.find(eq("dni", dniBuscar)).first();
+
+        if (doc != null) {
+            System.out.println(doc.toJson());
+        } else {
+            System.out.println("Paciente no encontrado.");
+        }
+    }
+
+    // ---------------------------------------------------------
+    // READ -> Listar todos los pacientes
+    // ---------------------------------------------------------
+    public static void listarPacientes(MongoCollection<Document> pacientes) {
+
+        System.out.println("\nListado de pacientes:");
+
+        for (Document p : pacientes.find()) {
+            System.out.println(p.toJson());
+        }
+    }
+
+    // ---------------------------------------------------------
+    // UPDATE -> Actualizar teléfono comprobando existencia
+    // ---------------------------------------------------------
+    public static void actualizarTelefono(Scanner sc, MongoCollection<Document> pacientes) {
+
+        try {
+
+            System.out.print("DNI del paciente: ");
+            String dniUpdate = sc.nextLine();
+
+            Document existe = pacientes.find(eq("dni", dniUpdate)).first();
+
+            if (existe != null) {
+
+                System.out.print("Nuevo telefono: ");
+                int nuevoTel = sc.nextInt();
                 sc.nextLine();
 
-                switch (opcion) {
+                Document filtro = new Document("dni", dniUpdate);
 
-                case 1: System.out.println("Nombre:");
-                String nombre = sc.nextLine();
+                Document actualizacion =
+                        new Document("$set", new Document("telefono", nuevoTel));
 
-                System.out.println("DNI:");
-                String dni = sc.nextLine();
+                pacientes.updateOne(filtro, actualizacion);
 
-                System.out.println("Telefono:");
-                int telefono = sc.nextInt();
+                System.out.println("Telefono actualizado.");
 
-                Document paciente = new Document("nombre", nombre)
-                        .append("dni", dni)
-                        .append("telefono", telefono);
+            } else {
+                System.out.println("Paciente no existe.");
+            }
 
-                pacientes.insertOne(paciente);
+        } catch (InputMismatchException e) {
+            System.out.println("Error: el teléfono debe ser numérico.");
+            sc.nextLine();
+        }
+    }
 
-                System.out.println("Paciente insertado");
-                break;
-                
-                case 2:
+    // ---------------------------------------------------------
+    // DELETE -> Eliminar paciente
+    // ---------------------------------------------------------
+    public static void eliminarPaciente(Scanner sc, MongoCollection<Document> pacientes) {
 
-                	System.out.println("ID cita:");
-                	int idCita = sc.nextInt();
+        System.out.print("DNI a eliminar: ");
+        String dniDelete = sc.nextLine();
 
-                	System.out.println("ID paciente:");
-                	int idPaciente = sc.nextInt();
+        Document existe = pacientes.find(eq("dni", dniDelete)).first();
 
-                	sc.nextLine();
+        if (existe != null) {
 
-                	System.out.println("Fecha:");
-                	String fecha = sc.nextLine();
+            pacientes.deleteOne(eq("dni", dniDelete));
+            System.out.println("Paciente eliminado.");
 
-                	System.out.println("Motivo:");
-                	String motivo = sc.nextLine();
+        } else {
+            System.out.println("Paciente no encontrado.");
+        }
+    }
+}
 
-                	Document cita = new Document("id_cita", idCita)
-                	        .append("id_paciente", idPaciente)
-                	        .append("fecha", fecha)
-                	        .append("motivo", motivo);
+/*
+ * 📌 6. Mostrar datos concretos del documento
 
-                	citas.insertOne(cita);
+Ahora muestras todo:
 
-                	System.out.println("Cita insertada");
-                	break;
-                	
-                case 3:
+System.out.println(doc.toJson());
 
-                	System.out.println("Introduce DNI:");
-                	String dniBuscar = sc.nextLine();
+Podrían pedir mostrar campos:
 
-                	Document doc = pacientes.find(eq("dni", dniBuscar)).first();
+System.out.println("Nombre: " + doc.getString("nombre"));
+System.out.println("DNI: " + doc.getString("dni"));
+System.out.println("Telefono: " + doc.getInteger("telefono"));
 
-                	if (doc != null) {
-                	    System.out.println(doc.toJson());
-                	} else {
-                	    System.out.println("Paciente no encontrado");
-                	}
+Esto aparece en el QuickStart de los apuntes.
 
-                	break;
-                	
-                case 4:
+📌 7. Comprobar si existe antes de insertar
 
-                	for (Document p : pacientes.find()) {
-                	    System.out.println(p.toJson());
-                	}
+Esto es un clásico de examen.
 
-                	break;
-                	
-                case 5:
+Document existe = pacientes.find(eq("dni", dni)).first();
 
-                	System.out.println("DNI del paciente:");
-                	String dniUpdate = sc.nextLine();
+if (existe == null) {
+    pacientes.insertOne(paciente);
+    System.out.println("Paciente insertado");
+} else {
+    System.out.println("Ya existe un paciente con ese DNI");
+}
+📌 8. Insertar varios documentos
 
-                	Document existe = pacientes.find(eq("dni", dniUpdate)).first();
+A veces piden insertMany.
 
-                	if (existe != null) {
+List<Document> lista = new ArrayList<>();
 
-                	    System.out.println("Nuevo telefono:");
-                	    int nuevoTel = sc.nextInt();
+lista.add(new Document("nombre", "Ana").append("dni", "111"));
+lista.add(new Document("nombre", "Luis").append("dni", "222"));
 
-                	    Document filtro = new Document("dni", dniUpdate);
+pacientes.insertMany(lista);
+📌 9. Buscar dentro de otra colección relacionada
 
-                	    Document actualizacion =
-                	            new Document("$set", new Document("telefono", nuevoTel));
+Ejemplo:
 
-                	    pacientes.updateOne(filtro, actualizacion);
+// Buscar citas de un paciente
+citas.find(eq("id_paciente", idPaciente));
 
-                	    System.out.println("Telefono actualizado");
+📌 10. Tipos de datos que pueden cambiar
 
-                	} else {
-                	    System.out.println("Paciente no existe");
-                	}
+En los apuntes aparecen estos tipos que pueden usar en el examen:
 
-                	break;
-                	
-                case 6:
+Tipo	Ejemplo
+String	nombre
+int	edad
+long	telefono
+boolean	activo
+array	telefonos
+documento embebido	direccion
 
-                	System.out.println("DNI a eliminar:");
-                	String dniDelete = sc.nextLine();
+Ejemplo array:
 
-                	Document existe2 = pacientes.find(eq("dni", dniDelete)).first();
+List<Integer> telefonos = new ArrayList<>();
+telefonos.add(666111222);
+telefonos.add(777333444);
 
-                	if (existe2 != null) {
+Document paciente = new Document("nombre","Juan")
+        .append("telefonos", telefonos);
+📌 11. Buscar con dos condiciones
 
-                	    pacientes.deleteOne(eq("dni", dniDelete));
-                	    System.out.println("Paciente eliminado");
+Esto también aparece en los apuntes.
 
-                	} else {
-                	    System.out.println("Paciente no encontrado");
-                	}
+Filters.and(
+    eq("nombre","Juan"),
+    eq("dni","12345678A")
+);
+⭐ Plantilla mental para el examen
 
-                	break;
-                	
-                case 0:
-                	System.out.println("Programa finalizado");
-                	break;
-                	}
-                	} while (opcion != 0);
+Si sabes estas 5 estructuras, puedes hacer cualquier CRUD:
 
-                	}
-                	}
-                	}
+INSERT
+Document doc = new Document("campo", valor)
+        .append("campo2", valor2);
+
+collection.insertOne(doc);
+READ
+collection.find(eq("campo", valor)).first();
+LIST
+for(Document d : collection.find())
+UPDATE
+collection.updateOne(
+    new Document("campo", valor),
+    new Document("$set", new Document("campoActualizar", nuevoValor))
+);
+DELETE
+collection.deleteOne(eq("campo", valor));
+ * */
+ 
